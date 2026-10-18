@@ -1,0 +1,43 @@
+name: Build Brigada APK
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main, master]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Extract project
+        run: |
+          python3 - <<'PY'
+          import glob, zipfile
+          archives = glob.glob('*.zip')
+          if len(archives) != 1:
+              raise SystemExit('Expected one ZIP file')
+          with zipfile.ZipFile(archives[0]) as z:
+              z.extractall('android-project')
+          PY
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: android-actions/setup-android@v3
+
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.9'
+
+      - name: Build APK
+        working-directory: android-project
+        run: gradle :app:assembleDebug --no-daemon
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Brigada-install-APK
+          path: android-project/app/build/outputs/apk/debug/app-debug.apk
